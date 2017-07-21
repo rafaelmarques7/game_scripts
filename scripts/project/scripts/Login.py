@@ -5,7 +5,7 @@ from selenium.webdriver.common.keys import Keys
 #CONSTANTS
 TRAVIAN_URL = "https://tx3.travian.pt/?lang=pt"
 USER_NAME = "rafaelmarques7"
-USER_PASS = "Rafa86rafa94"
+USER_PASS = "86ThisIsMyTravianPass94"
 #_______________________________________________________________________________
 #FUNCTIONS
 def login(driver):
