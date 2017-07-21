@@ -1,0 +1,25 @@
+-> resources available:
+
+body - id = backgroud - id = bodyWrapper - id = center
+- id = contentOuterContainer - ul id = stockBar  - id = stockBarResourceX
+(x= number)
+- class= middle - innerValue
+
+resource 1 = wood, 2 = clay, 3= iron, 4 = cereal
+
+
+-> construction
+
+body background bodywrapper center contentOuterContainer
+class = "boxes buildingList" - class = "boxes-content cf"
+ul< li< class = buildDuration - span class = "timer" -> innervalue = time left
+div's innerContent = finishTime
+
+
+-> crops
+body background bodyWrapper center contentOuterContainer
+content - <map name = "rx" id = "rx"
+- <area href = "build.php?id=1"
+
+acessing the crops
+travian.pt/ + href -> https://tx3.travian.pt/build.php?id=3
