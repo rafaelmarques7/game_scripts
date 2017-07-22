@@ -1,28 +1,16 @@
 import unidecode
+import time
 
-CROPS_LINKS = { "wood": ["https://tx3.travian.pt/build.php?id=1", "https://tx3.travian.pt/build.php?id=3", "https://tx3.travian.pt/build.php?id=14", "https://tx3.travian.pt/build.php?id=17"],
-                "clay": ["https://tx3.travian.pt/build.php?id=6", "https://tx3.travian.pt/build.php?id=5", "https://tx3.travian.pt/build.php?id=18", "https://tx3.travian.pt/build.php?id=16"],
-                "iron": ["https://tx3.travian.pt/build.php?id=7", "https://tx3.travian.pt/build.php?id=11", "https://tx3.travian.pt/build.php?id=10", "https://tx3.travian.pt/build.php?id=4"],
-                "cereal": ["https://tx3.travian.pt/build.php?id=2", "https://tx3.travian.pt/build.php?id=8", "https://tx3.travian.pt/build.php?id=9", "https://tx3.travian.pt/build.php?id=12", "https://tx3.travian.pt/build.php?id=13", "https://tx3.travian.pt/build.php?id=15", ]
-               }
-
-def upgrade_cost(driver, lowest_crop):
-    COST = {"wood": 0, "clay": 0, "iron": 0, "cereal": 0}
+def upgrade_status(driver, lowest_crop):
     driver.get(lowest_crop['link'])
-    for i in range(1,5):
-        xpath = '//*[@id="contract"]/div/div/div/span[' + str(i) + ']'
-        res_cost = driver.find_element_by_xpath(xpath)
-        res_cost = res_cost.text
-        res_cost = int(res_cost)
-        if i == 1:
-            COST['wood'] = res_cost
-        elif i == 2:
-            COST["clay"] = res_cost
-        elif i == 3:
-            COST["iron"] = res_cost
-        elif i == 4:
-            COST["cereal"] = res_cost
-    return COST
+    error_messages = driver.find_elements_by_class_name("statusMessage")
+    if error_messages:
+        #resources not available; get time for when it will be
+        identifier = '//*[@class="statusMessage"]/span/span'
+        span_div = driver.find_element_by_xpath(identifier)
+        time_till_resources = span_div.get_attribute('value')
+        return time_till_resources
+    return 0
 
 def compare_res(upgrade_cost, village_res):
     upgrade_res = []
@@ -38,14 +26,20 @@ def compare_res(upgrade_cost, village_res):
             result = False
     return result
 
+def convert_time(timer):
+    hours, mins, secs = int(timer[0:1]), int(timer[2:4]), int(timer[5:])
+    timer = secs + mins*60 + hours*3600
+    return timer
+
 def update_crop(driver, lowest_crop):
     driver.get(lowest_crop['link'])
-    xpath = "//button[contains(.,'Melhorar')]"
+    construct_time = convert_time(driver.find_element_by_class_name('clocks').text)
+    #click button to upgrade
+    xpath = "//button[contains(.,'liorer')]"
     upgrade_button = driver.find_element_by_xpath(xpath)
     upgrade_button.click()
+    return construct_time
 
-
-//*[@id="build"]/div[3]/div[4]/div[1]/span/font/font
 def resources_available_get(driver):
     RESOURCES = {"wood": 0, "clay": 0, "iron": 0, "cereal": 0}
     for i in range(1,5):
@@ -81,33 +75,59 @@ def resources_prod_get(driver):
             PRODUCTION['cereal'] = prod
     return PRODUCTION
 
-def crops_get_level(driver, CROPS_LINKS, CROPS_LEVEL):
-    for res_type, links in CROPS_LINKS.iteritems():
-        for link in links:
-            driver.get(link)
-            xpath = '//*[@id="content"]/h1/span'
-            item = driver.find_element_by_xpath(xpath)
-            lvl = item.text
-            lvl = lvl.encode('ascii', 'ignore')
-            lvl = filter( lambda x: x in '0123456789', lvl )
-            CROPS_LEVEL[res_type].append(lvl)
+def translate_crop_text(text):
+    """ bucheron == wood; argile = clay; fer = iron; cereales = cereal"""
+    crop_key_words = ["cheron", "argile", "fer", "ales"]
+    text = text.encode('ascii', 'ignore')
+    for pos, crop_ident in enumerate(crop_key_words):
+        is_in = text.find(crop_ident)
+        if is_in != -1:
+            lvl = int(filter(str.isdigit, text))
+            return {'crop_pos': pos, 'lvl': lvl}
+
+def crops_get_level(driver, CROPS_LEVEL):
+    for i in range(1, 19):
+        identifier = '//*[@id="rx"]/area[' + str(i) + ']'
+        crop_div = driver.find_element_by_xpath(identifier)
+        crop_text = crop_div.get_attribute('alt')
+        #crop info contains now the lvl of crop
+        crop_info = translate_crop_text(crop_text)
+        #we can also append the link
+        crop_part_link = crop_div.get_attribute('href')
+        crop_type = crop_info['crop_pos']
+        crop_lvl, crop_link = crop_info['lvl'], crop_part_link
+        crop_object = {'lvl': crop_lvl, 'link': crop_link}
+        if crop_type == 0:
+            CROPS_LEVEL["wood"].append(crop_object)
+        elif crop_type == 1:
+            CROPS_LEVEL["clay"].append(crop_object)
+        elif crop_type == 2:
+            CROPS_LEVEL["iron"].append(crop_object)
+        else:
+            CROPS_LEVEL["cereal"].append(crop_object)
     return CROPS_LEVEL
 
 def crops_get_info(driver):
-    CROPS_LEVEL = {"wood": [], "clay": [], "iron": [], "cereal": [] }
-    CROPS_LEVEL = crops_get_level(driver, CROPS_LINKS, CROPS_LEVEL)
-    return CROPS_LEVEL
+    CROPS = {"wood": [], "clay": [], "iron": [], "cereal": [] }
+    CROPS = crops_get_level(driver, CROPS)
+    return CROPS
 
 def check_construction(driver):
+    #we need to return a TIMER for when the construction will be completed
     class_name = 'buildingList'
     construction_box = driver.find_elements_by_class_name(class_name)
-    print "construction box:"
-    print construction_box
     if len(construction_box) > 0:
-        return True
+        identifier = '//*[@class="buildDuration"]/span'
+        span_div = driver.find_element_by_xpath(identifier)
+        time_till_complete = span_div.get_attribute('value')
+        if time_till_complete:
+            return time_till_complete
+        else:
+            #THIS PRINT IS FOR DEBUGGING PURPOSES CASE SOMETHING GOES WRONG
+            print "TIME_TILL_COMPLETE is False"
+            return 999
     else:
-        return False
-
+        return 0
 
 def troops_get(driver, homepage):
     troops = {}
@@ -130,7 +150,7 @@ class Village(object):
         self.resources_available = None
         self.resources_prod = None
         self.crops = None
-        self.crops_lvl_avg = None
+        #self.crops_lvl_avg = None
         self.lowest_crop = None
         self.troops = None
 
@@ -141,8 +161,6 @@ class Village(object):
     @resources_available.setter
     def resources_available(self, val):
         self._resources_available = resources_available_get(self.driver)
-        print "Resources available; value: "
-        print self._resources_available
 
     @property
     def resources_prod(self):
@@ -151,8 +169,6 @@ class Village(object):
     @resources_prod.setter
     def resources_prod(self, val):
         self._resources_prod = resources_prod_get(self.driver)
-        print "Resources Production; value: "
-        print self._resources_prod
 
     @property
     def crops(self):
@@ -161,8 +177,7 @@ class Village(object):
     @crops.setter
     def crops(self, val):
         self._crops =  crops_get_info(self.driver)
-        print ('crops level:')
-        print self._crops
+
 
     @property
     def crops_lvl_avg(self):
@@ -172,14 +187,13 @@ class Village(object):
     def crops_lvl_avg(self, val):
         avg_lvl = {"wood": 0, "clay": 0, "iron": 0, "cereal": 0}
         for key, vals in self._crops.iteritems():
-            print key
             summ = 0
             for val in vals:
                 summ += int(val)
             avg_lvl[key] = summ/len(vals)
         self._crops_lvl_avg = avg_lvl
-        print "crops average lvl: "
-        print self._crops_lvl_avg
+
+
 
     @property
     def lowest_crop(self):
@@ -188,17 +202,14 @@ class Village(object):
     @lowest_crop.setter
     def lowest_crop(self, val):
         low_crop = {'res_type': '', 'lvl': 99, 'link': ''}
-
-        for res_type, lvls in self._crops.iteritems():
-            print res_type, lvls
-            for pos, lvl in enumerate(lvls):
+        for res_type, crops_info in self._crops.iteritems():
+            for item in crops_info:
+                lvl, link = item['lvl'], item['link']
                 if int(lvl) <= low_crop['lvl']:
                     low_crop['res_type'] = res_type
                     low_crop['lvl'] = int(lvl)
-                    low_crop['link'] = CROPS_LINKS[res_type][pos]
+                    low_crop['link'] = link
         self._lowest_crop = low_crop
-        print "lowest crop:"
-        print self._lowest_crop
 
     @property
     def troops(self):
@@ -207,4 +218,3 @@ class Village(object):
     @troops.setter
     def troops(self, val):
         self._troops = troops_get(self.driver, self.homepage)
-        print self._troops
