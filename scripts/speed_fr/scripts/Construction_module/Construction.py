@@ -15,6 +15,8 @@ def construct_crops(driver, HOMEPAGE):
     #check if something is constructing
     under_construction = Village.check_construction(driver)
     if under_construction != 0:
+        print 'under_construction:'
+        print under_construction
         SLEEP_TIME = under_construction
         return SLEEP_TIME
     else:
@@ -27,5 +29,7 @@ def construct_crops(driver, HOMEPAGE):
             time_till_complete = Village.update_crop(driver, my_village.lowest_crop)
             return time_till_complete
         else:
+            print 'upgrade_status:'
+            print upgrade_status
             SLEEP_TIME = upgrade_status
             return SLEEP_TIME

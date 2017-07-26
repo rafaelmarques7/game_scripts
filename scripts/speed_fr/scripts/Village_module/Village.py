@@ -1,15 +1,28 @@
 import unidecode
 import time
+from Time_module import time_functions
 
 def upgrade_status(driver, lowest_crop):
     driver.get(lowest_crop['link'])
     error_messages = driver.find_elements_by_class_name("statusMessage")
     if error_messages:
         #resources not available; get time for when it will be
-        identifier = '//*[@class="statusMessage"]/span/span'
-        span_div = driver.find_element_by_xpath(identifier)
-        time_till_resources = span_div.get_attribute('value')
-        return time_till_resources
+        try:
+            identifier = '//*[@class="statusMessage"]/span/span'
+            span_div = driver.find_element_by_xpath(identifier)
+            time_till_resources = span_div.get_attribute('value')
+            return time_till_resources
+        except Exception as e:
+            print e
+        try:
+            identifier = '//*[@class="statusMessage"]/span'
+            span_div = driver.find_element_by_xpath(identifier)
+            time_till_resources = span_div.get_attribute('value')
+            return time_till_resources
+        except Exception as e:
+            print e
+        finally:
+            return 999
     return 0
 
 def compare_res(upgrade_cost, village_res):
@@ -26,14 +39,9 @@ def compare_res(upgrade_cost, village_res):
             result = False
     return result
 
-def convert_time(timer):
-    hours, mins, secs = int(timer[0:1]), int(timer[2:4]), int(timer[5:])
-    timer = secs + mins*60 + hours*3600
-    return timer
-
 def update_crop(driver, lowest_crop):
     driver.get(lowest_crop['link'])
-    construct_time = convert_time(driver.find_element_by_class_name('clocks').text)
+    construct_time = time_functions.convert_time(driver.find_element_by_class_name('clocks').text)
     #click button to upgrade
     xpath = "//button[contains(.,'liorer')]"
     upgrade_button = driver.find_element_by_xpath(xpath)
@@ -121,6 +129,7 @@ def check_construction(driver):
         span_div = driver.find_element_by_xpath(identifier)
         time_till_complete = span_div.get_attribute('value')
         if time_till_complete:
+            print time_till_complete
             return time_till_complete
         else:
             #THIS PRINT IS FOR DEBUGGING PURPOSES CASE SOMETHING GOES WRONG
