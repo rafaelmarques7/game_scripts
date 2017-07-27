@@ -7,6 +7,7 @@ import Login
 import time
 import random
 import time_functions
+
 HOMEPAGE = 'https://tx3.travian.fr/dorf1.php'
 MEETING_PLACE = 'https://tx3.travian.fr/build.php?tt=1&id=39'
 
@@ -49,16 +50,25 @@ def incoming_atacks(driver):
     moves = check_movs(driver)
     print moves
 
+def get_atack_index(driver):
+    xpath = '//*[@class="role"]/a'
+    village_div = driver.find_elements_by_xpath(xpath)
+    for index, village in enumerate(village_div):
+        village_name = village.text
+        if village_name != 'Eder':
+            return index
+    return 0
+
 def check_incoming_atacks(driver):
     #check if there are incoming atacks
     incoming = driver.find_elements_by_class_name('att1')
     if len(incoming) > 0:
         #there are incoming atacks, now get the timer!
-        #NOTE: when atacks are incoming, they are always in the first position
-        #of the situation if the meeting place
         driver.get(MEETING_PLACE)
         div = driver.find_elements_by_class_name('at')
-        arr_time = div[0].text
+        #NOTE: the attack is not always the first on the list
+        atack_index = get_atack_index(driver)
+        arr_time = div[atack_index].text
         time_att = time_functions.convert_to_epoch_time(arr_time)
         #now we have the arrival time of the atacks
         #we need to wait till just before the attack, and than send the troops away
@@ -68,7 +78,7 @@ def check_incoming_atacks(driver):
     else:
         print "no incoming atacks"
 
-def cancel_atack(driver):
+def cancel_atack(driver, time_att):
     while True:
         time_now = time.time()
         if time_now > time_att + 5:
@@ -76,6 +86,7 @@ def cancel_atack(driver):
             print 'cancelling atack!'
             abort_div = driver.find_elements_by_class_name('abort')
             if len(abort_div):
+                print "aborting"
                 driver.find_element_by_xpath('//*[@class="abort"]/button').click()
             return None
 
@@ -88,7 +99,7 @@ def avoid_incoming_atacks(driver, time_att):
             #send troops
             print "sending atack!"
             Raids.raid(driver)
-            cancel_atack(driver)
+            cancel_atack(driver, time_att)
             return None
 
 def evade_atacks():

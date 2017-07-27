@@ -203,7 +203,6 @@ class Village(object):
         self._crops_lvl_avg = avg_lvl
 
 
-
     @property
     def lowest_crop(self):
         return self._lowest_crop

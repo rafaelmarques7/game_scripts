@@ -26,15 +26,21 @@ driver = webdriver.Chrome()     #useful for testing
 #do login -> directs to main village
 driver = Login.login(driver)
 
+sleep_timers = []
 while True:
-    print "traning maceman"
-    Train.train_maceman(driver)
-    print "atacking"
-    atack_time = Raids.raid(driver)
-    print "returning to homepage"
+    print "getting homepage"
     driver.get(HOMEPAGE)
-    print "sleeping now for: " + str(atack_time)
-    time.sleep(atack_time + random.randint(63,298))
+    #print "traning maceman"
+    #Train.train_maceman(driver)
+    print "atacking"
+    raid_time = Raids.raid(driver)
+    if raid_time != 0:
+        sleep_timers.append(time.time() + raid_time)
+        sleep_timers = sorted(sleep_timers)
+    else:
+        SLEEP_TIME = sleep_timers.pop(0) - time.time()
+        print "sleeping now for: " + str(SLEEP_TIME)
+        time.sleep(SLEEP_TIME + random.randint(30,180))
 
 """
 while True:
